@@ -1,14 +1,17 @@
 from config.llm import model
 from loguru import logger
+import operator
+from langchain_core.messages import BaseMessage
+from typing import TypedDict, Annotated, Union, List
 
-from typing import TypedDict
-
-class TravelState(TypedDict):
-    query: str
+class TripPlanningState(TypedDict):
+    messages: Annotated[List[BaseMessage], operator.add]
+    user_input: str
     destination: str
-    flights: list
-    hotels: list
-    dining: list
+    dates: str
     budget: dict
+    flight_options: List[dict]
+    hotel_options: List[dict]
+    dining_options: List[dict]
     itinerary: str
-    result: str
+    next_agent: str

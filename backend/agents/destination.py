@@ -1,12 +1,12 @@
 import os
 from config.llm import model
-# from agents.team import TravelState
+from agents.team import TripPlanningState
 from datetime import datetime
 from dotenv import load_dotenv
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import HumanMessage, AIMessage ,SystemMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 from langchain_exa import ExaFindSimilarResults, ExaSearchResults
 
@@ -78,23 +78,36 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 # Create agent with bold tools
-distination_agent = create_react_agent(model=model, tools=[exa_search, exa_find_similar], prompt=prompt)
+destination_agent = create_react_agent(model=model, tools=[exa_search, exa_find_similar], prompt=prompt)
 
-now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-response = distination_agent.invoke({
-    "messages": [
-        HumanMessage(content=f"Tìm địa điểm du lịch trên ba vì và phản hồi nội dung lại bằng tiếng việt. Thời gian hỏi hiện tại là {now_str}")
-    ]
-}, config={"recursion_limit": 4, "return_intermediate_steps": True})
+def destination_node(state: TripPlanningState) -> dict:
+    print("---- CALL DESTINATION NODE ----")
 
-from pprint import pprint
-pprint(response.get("messages")[-1].content)
+    messages = state.get("messages", [])
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    lass_user_messages = next((msg for msg in reversed(messages) if isinstance(msg, HumanMessage)), None)
 
+    if not lass_user_messages:
+        return {
+            "messages": [AIMessage(content="Error: Cannot find a request from user to process")]
+        }
+    
+    content_with_time = f"{lass_user_messages.content}\n\n(The request was processed at: {now_str})"
+    reponse = destination_agent.invoke({"messages": [HumanMessage(content=content_with_time)]})
+    final_agent_reponse = reponse.get("messages")[-1].content
+    return {"messages": [AIMessage(content=final_agent_reponse)]}
 
-# print(response)
+if __name__ == "__main__":
 
-# def distination_node(state: TravelState) -> TravelState:
-#     human_message = state.get("query", "").strip()
-#     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    from pprint import pprint
 
-#     distination_agent.invoke(f"")
+    # Tạo một state giả lập để test
+    initial_state: TripPlanningState = {
+        "messages": [
+            HumanMessage(content="Tìm địa điểm du lịch ở Ba Vì.")
+        ]
+    }
+    result_update = destination_node(initial_state)
+
+    print("\n--- KẾT QUẢ CẬP NHẬT STATE ---")
+    pprint(result_update)
