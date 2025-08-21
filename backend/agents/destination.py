@@ -1,12 +1,7 @@
 import os
 from config.llm import model
-from agents.team import TripPlanningState
-from datetime import datetime
 from dotenv import load_dotenv
-
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-
-from langchain_core.messages import HumanMessage, AIMessage ,SystemMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 from langchain_exa import ExaFindSimilarResults, ExaSearchResults
 
@@ -74,40 +69,8 @@ prompt = ChatPromptTemplate.from_messages([
     - Common transportation options
     - Standard tourist advice
     """),
-    MessagesPlaceholder(variable_name="messages"),
+    MessagesPlaceholder(variable_name="context"),
 ])
 
 # Create agent with bold tools
 destination_agent = create_react_agent(model=model, tools=[exa_search, exa_find_similar], prompt=prompt)
-
-def destination_node(state: TripPlanningState) -> dict:
-    print("---- CALL DESTINATION NODE ----")
-
-    messages = state.get("messages", [])
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-    lass_user_messages = next((msg for msg in reversed(messages) if isinstance(msg, HumanMessage)), None)
-
-    if not lass_user_messages:
-        return {
-            "messages": [AIMessage(content="Error: Cannot find a request from user to process")]
-        }
-    
-    content_with_time = f"{lass_user_messages.content}\n\n(The request was processed at: {now_str})"
-    reponse = destination_agent.invoke({"messages": [HumanMessage(content=content_with_time)]})
-    final_agent_reponse = reponse.get("messages")[-1].content
-    return {"messages": [AIMessage(content=final_agent_reponse)]}
-
-if __name__ == "__main__":
-
-    from pprint import pprint
-
-    # Tạo một state giả lập để test
-    initial_state: TripPlanningState = {
-        "messages": [
-            HumanMessage(content="Tìm địa điểm du lịch ở Ba Vì.")
-        ]
-    }
-    result_update = destination_node(initial_state)
-
-    print("\n--- KẾT QUẢ CẬP NHẬT STATE ---")
-    pprint(result_update)
