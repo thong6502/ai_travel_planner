@@ -1,22 +1,8 @@
-import os
 from config.llm import model
-from dotenv import load_dotenv
+from tools.exa import exa_search, exa_find_similar
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.prebuilt import create_react_agent
-from langchain_exa import ExaFindSimilarResults, ExaSearchResults
 
-load_dotenv()
-
-# Initialize exa tools
-exa_search = ExaSearchResults(
-    exa_api_key=os.environ.get("EXA_API_KEY"),
-    max_results=5
-)
-
-exa_find_similar = ExaFindSimilarResults(
-    exa_api_key=os.environ.get("EXA_API_KEY"),
-    max_results=5
-)
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", 
@@ -69,7 +55,7 @@ prompt = ChatPromptTemplate.from_messages([
     - Common transportation options
     - Standard tourist advice
     """),
-    MessagesPlaceholder(variable_name="context"),
+    MessagesPlaceholder(variable_name="messages"),
 ])
 
 # Create agent with bold tools

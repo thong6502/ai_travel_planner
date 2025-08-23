@@ -36,7 +36,7 @@ prompt = ChatPromptTemplate.from_messages([
 
     ### REASONING
     Think step-by-step **in your head** before replying."""),
-    MessagesPlaceholder(variable_name="context")
+    MessagesPlaceholder(variable_name="messages")
 ])
 
 budget_agent = prompt | model

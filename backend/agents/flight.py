@@ -1,12 +1,10 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage
 from config.llm import model
-import requests
-import os
-from dotenv import load_dotenv
-from typing import Dict, Any, Optional
+from langgraph.prebuilt import create_react_agent
+from tools.google_flight import get_google_flights
+from models.flight import FlightResults
 
-load_dotenv()
 
 prompt = ChatPromptTemplate.from_messages([
     ("system","""
@@ -50,45 +48,17 @@ prompt = ChatPromptTemplate.from_messages([
         ### REASONING
         Think step-by-step **in your head** before replying.
     """),
-    MessagesPlaceholder(variable_name="context")
+    MessagesPlaceholder(variable_name="messages")
 ])
 
-@tool
-def get_flights(flight_info: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Tìm kiếm các chuyến bay dựa trên thông tin được cung cấp trong một dictionary.
-    Dictionary đầu vào phải chứa các key: 'dep_iata' (bắt buộc), 'arr_iata' (bắt buộc), 
-    và 'flight_date' (tùy chọn, định dạng YYYY-MM-DD).
-    Ví dụ: {"dep_iata": "HAN", "arr_iata": "SGN", "flight_date": "2025-08-22"}
-    """
+flight_agent = create_react_agent(model=model, tools=[get_google_flights], prompt=prompt, response_format=FlightResults)
 
-    # Trích xuất thông tin từ dictionary đầu vào
-    dep_iata = flight_info.get('dep_iata')
-    arr_iata = flight_info.get('arr_iata')
-    flight_date = flight_info.get('flight_date')
 
-    # --- Kiểm tra đầu vào ---
-    if not dep_iata or not arr_iata:
-        return {"error": "Dictionary đầu vào phải chứa cả 'dep_iata' và 'arr_iata'."}
-    
-    # URL và các tham số cơ bản của API
-    API_URL = "http://api.aviationstack.com/v1/flights"
-    params = {
-        'access_key': os.getenv("AVIATIONSTACK_FLIGHT_API"),
-        'dep_iata': dep_iata,
-        'arr_iata': arr_iata,
-        'flight_date':flight_date,
-        'limit': 10
-    }
 
-        # --- Gọi API và xử lý lỗi ---
-    try:
-        response = requests.get(API_URL, params=params)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.HTTPError as http_err:
-        return {"error": f"HTTP error occurred: {http_err}", "details": response.text}
-    except requests.exceptions.RequestException as req_err:
-        return {"error": f"An error occurred: {req_err}"}
-    except Exception as e:
-        return {"error": f"An unexpected error occurred: {e}"}
+# from langchain.globals import set_debug
+# set_debug(True)
+
+# from pprint import pprint
+# pprint(flight_agent.invoke({
+#     "messages": [HumanMessage(content="Find flights from Hanoi to Ho Chi Minh City on August 30, 2025")]
+# }))
