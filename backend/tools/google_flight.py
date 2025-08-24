@@ -56,7 +56,7 @@ def get_google_flights(
     ]
     """
     logger.info(
-        f"Getting flights from Google Flights for {departure} to {destination} on {date}"
+        f"Getting flights from Google Flights for {departure} to {destination} on {date}, trip({trip}), adults({adults}), children({children}), cabin_class({cabin_class})"
     )
 
     try:

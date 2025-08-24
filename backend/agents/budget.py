@@ -1,5 +1,6 @@
 from config.llm import model
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langgraph.prebuilt import create_react_agent
 
 prompt = ChatPromptTemplate.from_messages([
     ("system",
@@ -39,4 +40,5 @@ prompt = ChatPromptTemplate.from_messages([
     MessagesPlaceholder(variable_name="messages")
 ])
 
-budget_agent = prompt | model
+# budget_agent = prompt | model
+budget_agent = create_react_agent(model=model, tools=[], prompt=prompt)

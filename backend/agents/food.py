@@ -1,7 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.prebuilt import create_react_agent
 from config.llm import model
-from tools.exa import exa_search, exa_find_similar
+from tools.exa import CustomExaSearch, CustomExaFindSimilar
 
 
 prompt = ChatPromptTemplate.from_messages([
@@ -102,7 +102,7 @@ prompt = ChatPromptTemplate.from_messages([
     (MessagesPlaceholder(variable_name="messages"))
 ])
 
-dining_agent = create_react_agent(model=model, tools=[exa_search, exa_find_similar], prompt=prompt)
+dining_agent = create_react_agent(model=model, tools=[CustomExaSearch, CustomExaFindSimilar], prompt=prompt)
 
 # from pprint import pprint
 # from langchain_core.messages import HumanMessage

@@ -1,5 +1,5 @@
 from config.llm import model
-from tools.exa import exa_search, exa_find_similar
+from tools.exa import CustomExaSearch, CustomExaFindSimilar
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.prebuilt import create_react_agent
 
@@ -59,4 +59,4 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 # Create agent with bold tools
-destination_agent = create_react_agent(model=model, tools=[exa_search, exa_find_similar], prompt=prompt)
+destination_agent = create_react_agent(model=model, tools=[CustomExaSearch, CustomExaFindSimilar], prompt=prompt)

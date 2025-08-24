@@ -21,10 +21,8 @@ class Router(BaseModel):
     )
     details : str = Field(
         description=(
-            "Explain the choice in a natural, human-like way, as if a seasoned travel orchestrator is guiding the plan. "
-            "Keep it concise, clear, and directly tied to the user’s travel goals. "
-            "Write it as a directive/command instead of speaking in first-person. "
-            "Example: 'Check out the top activities and places to visit in Dalat to build the foundation for your trip planning.'"
+            "Explain the choice in a natural, human-like way, as if a seasoned travel orchestrator is guiding the plan. Keep it concise, clear, and directly tied to the user’s travel goals. Write it as a directive/command instead of speaking in first-person. "
+            "Example: 'Check out the top activities and places to visit in Dalat to build the foundation my trip.'"
         )
     )
 
@@ -48,11 +46,12 @@ supervisor_prompt = ChatPromptTemplate.from_messages(
             - **FINISH** → End the orchestration when every success criterion has been achieved.
 
             ### INSTRUCTION
-            1. **Initial Foundation:** Always start with **destination_node**, then proceed to **budget_node** to establish trip context and cost boundaries.  
-            2. **Deep Research Phase:** Sequentially call **flight_search_node**, **hotel_search_node**, and **food_node** to gather realistic and detailed travel data.  
-            3. **Validation Loop:** After each node, compare results with success criteria. If something is missing (e.g., no prices, vague activities, unrealistic budget), re-call the same node until satisfactory.  
-            4. **Integration:** Once all required data is present, call **itinerary_node** to generate a polished, structured itinerary.  
-            5. **Final Audit & Closure:** Review itinerary against all success criteria. If compliant, proceed to **FINISH**. If not, re-call the necessary node(s).  
+            1. **Initial Foundation:** Always start with **destination_node**
+            2. **Deep Research Phase:** Sequentially call **flight_search_node**, **hotel_search_node**, and **food_node** to gather realistic and detailed travel data.
+            3. Then proceed to **budget_node** to calculate and recommend the optimal cost solution.  
+            4. **Validation Loop:** After each node, compare results with success criteria. If something is missing (e.g., no prices, vague activities, unrealistic budget), re-call the same node until satisfactory.  
+            5. **Integration:** Once all required data is present, call **itinerary_node** to generate a polished, structured itinerary.  
+            6. **Final Audit & Closure:** Review itinerary against all success criteria. If compliant, proceed to **FINISH**. If not, re-call the necessary node(s).  
 
 
             ### SUCCESS CRITERIA (MANDATORY)
@@ -66,15 +65,18 @@ supervisor_prompt = ChatPromptTemplate.from_messages(
             - ✅ Clear Markdown formatting with visual clarity (tables, lists, highlights)  
             - ✅ Personalized travel tips tied to user’s profile  
             - ✅ Only verified, real-world places (no fictional or non-existent options)  
-
+            
+            
+            ### REQUIREMENTS
+            - Role-play as a user to generate feedback
+            ex: Check out the top activities and places to visit in Dalat to build the foundation my trip.
 
             ### REASONING
             - Think carefully before selecting a node.  
             - Re-validate after every step.  
             - Always pursue completeness and accuracy, not speed.  
             - Never skip success criteria.  
-
-            Take a deep breath and work on this problem step-by-step.
+            - Take a deep breath and work on this problem step-by-step.
 
         """),
         (MessagesPlaceholder(variable_name="messages"))
@@ -82,4 +84,4 @@ supervisor_prompt = ChatPromptTemplate.from_messages(
 )
 
 # supervisor_agent = supervisor_prompt | model2.with_structured_output(Router)
-supervisor_agent = create_react_agent(model=model2, prompt=supervisor_prompt, response_format=Router)
+supervisor_agent = create_react_agent(model=model2, tools=[], prompt=supervisor_prompt, response_format=Router)
