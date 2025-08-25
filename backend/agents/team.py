@@ -1,11 +1,12 @@
 from loguru import logger
-import operator
-from langchain_core.messages import BaseMessage
+
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from typing import TypedDict, Annotated, List
-from langchain_core.messages import HumanMessage, AIMessage
 from datetime import datetime
-from pprint import pprint
-from langchain_core.messages import HumanMessage
+
+import operator
+from langgraph.graph import StateGraph
+from langgraph.graph import END
 
 from agents.destination import destination_agent
 from agents.budget import budget_agent
@@ -24,31 +25,32 @@ class TripPlanningState(TypedDict):
     hotel_options: List[any]
     dining: str
     itinerary: str
+    next_node: str
 
 
 def format_state(state: TripPlanningState) -> str:
     """Hàm helper để định dạng state cho LLM đọc."""
     formatted = []
     for key, value in state.items():
-        if key == "messages" or not value: continue
+        if key == "messages" or key == "next_node" or not value: continue
         formatted.append(f"- {key}: {value}\n")
     return "\n".join(formatted) if formatted else "No information"
 
-def supervision(state: TripPlanningState) -> str:
+def supervision_node(state: TripPlanningState) -> str:
     print("---- CALL SUPERVISION ----")
-    print(f"Current State: \n{format_state(state)}")
+    # print(f"Current State: \n{format_state(state)}")
 
     response = supervisor_agent.invoke({
         "messages": state["messages"]
     })
 
     structured_response = response.get("structured_response")
-    # Lưu lại chi tiết reasoning của supervisor vào messages
-    state["messages"].append(HumanMessage(content=structured_response.details))
 
     # Trả về tên node kế tiếp (ở dạng string)
-    return structured_response
-
+    return {
+        "messages": [HumanMessage(content=structured_response.details)],
+        "next_node": structured_response.next_node
+    }
 
 def destination_node(state: TripPlanningState) -> dict:
     print("---- CALL DESTINATION NODE ----")
@@ -66,6 +68,7 @@ def destination_node(state: TripPlanningState) -> dict:
     }
     # 8.000 -> 15.000 token
 
+
 def budget_node(state: TripPlanningState) -> dict:
     print("---- CALL BUDGET NODE ----")
 
@@ -80,6 +83,7 @@ def budget_node(state: TripPlanningState) -> dict:
         "messages": [AIMessage(content=final_agent_reponse)],
         "budget": final_agent_reponse
     }
+
 
 def hotel_node(state: TripPlanningState) -> dict:
     print("---- CALL HOTEL NODE -----")
@@ -147,9 +151,65 @@ def itinerary_node(state: TripPlanningState) -> dict:
     }
     # 5.000 -> 10.000 token
 
+def route_after_supervision(state: TripPlanningState):
+    next_node = state.get("next_node")
+    return next_node
+
+
+# Initialize graph
+graph_builder = StateGraph(TripPlanningState)
+
+graph_builder.add_node("supervision_node", supervision_node)
+graph_builder.add_node("destination_node", destination_node)  # Add node for destination_node
+graph_builder.add_node("budget_node", budget_node)  # Add node for budget_node
+graph_builder.add_node("hotel_node", hotel_node)
+graph_builder.add_node("flight_node", flight_node)
+graph_builder.add_node("dining_node", dining_node)
+graph_builder.add_node("itinerary_node", itinerary_node)
+
+graph_builder.set_entry_point("supervision_node")
+
+graph_builder.add_conditional_edges(
+    "supervision_node",
+    route_after_supervision,
+    {
+        "destination_node": "destination_node",
+        "budget_node": "budget_node",
+        "flight_node": "flight_node",
+        "hotel_node": "hotel_node",
+        "dining_node" : "dining_node",
+        "itinerary_node" : "itinerary_node",
+        "FINISH" : END
+    })
+
+graph_builder.add_edge("destination_node", "supervision_node")
+graph_builder.add_edge("budget_node", "supervision_node")
+graph_builder.add_edge("flight_node", "supervision_node")
+graph_builder.add_edge("hotel_node", "supervision_node")
+graph_builder.add_edge("dining_node", "supervision_node")
+graph_builder.add_edge("itinerary_node", "supervision_node")
+
+# Compile graph
+graph_travel_planner = graph_builder.compile()
+
+mock_state : TripPlanningState = {
+    "messages" : [HumanMessage("Tôi muốn lên kế hoạch một chuyến đi phiêu lưu cho hai người từ Hà Nội đến Đà nẵng, đi từ ngày 02/10/2025 đến 06/10/2025. Ngân sách của chúng tôi là 10 triệu đồng. Một người trong chúng tôi ăn chay, nhưng cả hai đều thích thử đặc sản địa phương. Về chỗ ở, chúng tôi chỉ cần một homestay sạch sẽ, có phòng riêng và view đẹp.")],
+    "user_input": "Tôi muốn lên kế hoạch một chuyến đi phiêu lưu cho hai người từ Hà Nội đến Đà nẵng, đi từ ngày 02/10/2025 đến 06/10/2025. Ngân sách của chúng tôi là 10 triệu đồng. Một người trong chúng tôi ăn chay, nhưng cả hai đều thích thử đặc sản địa phương. Về chỗ ở, chúng tôi chỉ cần một homestay sạch sẽ, có phòng riêng và view đẹp."
+    }
+
+print(graph_travel_planner.invoke({
+    "messages" : [HumanMessage("Tôi muốn lên kế hoạch một chuyến đi phiêu lưu cho hai người từ Hà Nội đến Đà nẵng, đi từ ngày 02/10/2025 đến 06/10/2025. Ngân sách của chúng tôi là 10 triệu đồng. Một người trong chúng tôi ăn chay, nhưng cả hai đều thích thử đặc sản địa phương. Về chỗ ở, chúng tôi chỉ cần một homestay sạch sẽ, có phòng riêng và view đẹp.")],
+    "user_input": "Tôi muốn lên kế hoạch một chuyến đi phiêu lưu cho hai người từ Hà Nội đến Đà nẵng, đi từ ngày 02/10/2025 đến 06/10/2025. Ngân sách của chúng tôi là 10 triệu đồng. Một người trong chúng tôi ăn chay, nhưng cả hai đều thích thử đặc sản địa phương. Về chỗ ở, chúng tôi chỉ cần một homestay sạch sẽ, có phòng riêng và view đẹp."
+    }))
+
+# Lựa chọn 2: In ra dưới dạng văn bản ASCII
+# print("Biểu diễn ASCII của đồ thị:")
+# print(graph.get_graph().draw_ascii())
+# print("\nMã Mermaid của đồ thị:")
+# print(graph.get_graph().draw_mermaid())
 
 
 # --------------------------------------------
-from mock_data import mock_state
+# from mock_data import mock_state
 
-pprint(itinerary_node(mock_state))
+# pprint(itinerary_node(mock_state))

@@ -1,5 +1,6 @@
 from langchain_exa import ExaFindSimilarResults, ExaSearchResults
 import os
+from loguru import logger
 from typing import Union
 from langchain_core.tools import tool
 from dotenv import load_dotenv
@@ -32,6 +33,10 @@ def CustomExaSearch(query: str) -> Union[list[dict] | str]:
         Output is a JSON array of the query results
     """
     # Các tham số mặc định được truyền trực tiếp vào đây
+
+    logger.info(
+        f"Exa search with query {query}"
+    )
     return exa_search.invoke({
         "query": query, 
         "num_results": 2, 
@@ -54,6 +59,9 @@ def CustomExaFindSimilar(url: str) -> Union[list[dict] | str]:
         Output is a JSON array of the query results
     """
     # Sửa lại tham số từ "query" thành "url" để khớp với yêu cầu của công cụ
+    logger.info(
+        f"Exa find similar with query {url}"
+    )
     return exa_find_similar.invoke({
         "url": url, 
         "num_results": 2, 

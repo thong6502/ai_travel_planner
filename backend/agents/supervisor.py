@@ -1,30 +1,7 @@
-from typing import Literal
-from pydantic import BaseModel, Field
+from models.supervisor import supervisor_result
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from config.llm import model2
 from langgraph.prebuilt import create_react_agent
-
-AgentChoice = Literal[
-    "destination_node",
-    "budget_node",
-    "flight_search_node",
-    "hotel_search_node",
-    "dining_node",
-    "itinerary_node",
-    "FINISH"
-]
-
-class Router(BaseModel):
-    """Cấu trúc output cho Supervisor."""
-    next_node : AgentChoice = Field(
-        description="Only The name of the node to be called."
-    )
-    details : str = Field(
-        description=(
-            "Explain the choice in a natural, human-like way, as if a seasoned travel orchestrator is guiding the plan. Keep it concise, clear, and directly tied to the user’s travel goals. Write it as a directive/command instead of speaking in first-person. "
-            "Example: 'Check out the top activities and places to visit in Dalat to build the foundation my trip.'"
-        )
-    )
 
 
 supervisor_prompt = ChatPromptTemplate.from_messages(
@@ -39,19 +16,19 @@ supervisor_prompt = ChatPromptTemplate.from_messages(
             ### NODES YOU CAN CALL (output exactly one of these names per step)
             - **destination_node** → Suggest famous destinations, hidden gems, and engaging activities.
             - **budget_node** → Cost optimization and strategy recommendations to balance costs when plans exceed budget
-            - **flight_search_node** → Research flights, analyze prices, durations, and connections.
-            - **hotel_search_node** → Search for accommodations, compare options, extract costs and links.
-            - **food_node** → Find dining experiences, restaurants, local specialties.
+            - **flight_node** → Research flights by airport iata code, analyze prices, duration and connecting flights.
+            - **hotel_node** → Search for accommodations, compare options, extract costs and links.
+            - **dining_node** → Find dining experiences, restaurants, local specialties.
             - **itinerary_node** → Compile all collected data into a structured, day-by-day itinerary.
             - **FINISH** → End the orchestration when every success criterion has been achieved.
 
             ### INSTRUCTION
             1. **Initial Foundation:** Always start with **destination_node**
-            2. **Deep Research Phase:** Sequentially call **flight_search_node**, **hotel_search_node**, and **food_node** to gather realistic and detailed travel data.
-            3. Then proceed to **budget_node** to calculate and recommend the optimal cost solution.  
-            4. **Validation Loop:** After each node, compare results with success criteria. If something is missing (e.g., no prices, vague activities, unrealistic budget), re-call the same node until satisfactory.  
-            5. **Integration:** Once all required data is present, call **itinerary_node** to generate a polished, structured itinerary.  
-            6. **Final Audit & Closure:** Review itinerary against all success criteria. If compliant, proceed to **FINISH**. If not, re-call the necessary node(s).  
+            2. **Deep Research Phase:** Sequentially call **flight_search_node**, **hotel_search_node**, and **dining_node** to gather realistic and detailed travel data.
+            3. Then, switch to **budget_node** to calculate and recommend the optimal cost solution.
+            4. **Validation Loop:** After each node, compare the results against the success criteria. If information is missing (e.g., no price, unclear activity, unrealistic budget), call that node again until it meets the requirements.
+            5. **Integration:** Once you have all the necessary data, call **itinerary_node** to create a complete, structured itinerary.
+            6. **Final Audit & Close:** Review the itinerary against all success criteria. If it meets the requirements, move to **COMPLETE**. If not, recall the necessary buttons.
 
 
             ### SUCCESS CRITERIA (MANDATORY)
@@ -84,4 +61,4 @@ supervisor_prompt = ChatPromptTemplate.from_messages(
 )
 
 # supervisor_agent = supervisor_prompt | model2.with_structured_output(Router)
-supervisor_agent = create_react_agent(model=model2, tools=[], prompt=supervisor_prompt, response_format=Router)
+supervisor_agent = create_react_agent(model=model2, tools=[], prompt=supervisor_prompt, response_format=supervisor_result)
